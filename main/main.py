@@ -1,17 +1,21 @@
 # -*- coding: UTF-8 -*-
+import random
 import subprocess, time, ctypes, os, re
 
 # ARGUMENTS
 command = []
-path = r'D:\test'  # 文件所在的文件夹
+# path = r'D:\test'  # 文件所在的文件夹
+path = r'D:\Sean\我的图片\新建文件夹'  # 文件所在的文件夹
 tmp_path = r'D:\test\tmp'  # 文件所在的文件夹
 out_img_path = ''  # 输出的文件夹 初始化
 if not os.path.exists(tmp_path):
     os.mkdir(tmp_path)
 
+
 # Functions
 def running_path():
     running = r"D:\waifu2x-caffe\waifu2x-caffe-cui.exe"
+    print("waifu2x-caffe-cui.exe所在文件夹:", running)
     command.append(running)
 
 
@@ -26,7 +30,7 @@ def output_files(folder, image):
     command.append("-o " + out_path)
     global out_img_path
     out_img_path = os.path.join(folder, image)
-    print(out_img_path)
+    print("输出文件:", out_img_path)
 
 
 def mode(mode, weight = None, height = None, scale = 2.0, noise = 1):
@@ -82,13 +86,16 @@ def tta(y = 0):
         command.append("-t 1")
 
 
-def file_names(path,tmp_path):
+def file_names(path, tmp_path):
     img_ext = ['.bmp', '.jpeg', '.jpg', '.png']
-    os.chdir(path)
-    current_files = os.listdir(path)
+    current_files = set(os.listdir(path))
 
-    for item in current_files:
-
+    # for item in current_files: # 迭代全部
+    while current_files:  # 随机选择
+        item = random.sample(current_files, 1)[0]
+        print("切换模式:", "随机选择")
+        print("工作文件夹:", path)
+        print("临时文件夹:", tmp_path)
         if os.path.splitext(item)[-1] in img_ext:  # TODO: 这里有一个临时文件需要排除的需求
             img_name = os.path.basename(item)
             in_name = img_name
@@ -100,20 +107,18 @@ def file_names(path,tmp_path):
 
             input_files(path, in_name)  # 输入文件名
             output_files(tmp_path, out_name)  # 输出文件名
-            print(command[-1])
             yield
 
 
-files = file_names(path,tmp_path)  # 迭代器 当前文件夹的文件
+files = file_names(path, tmp_path)  # 迭代器 当前文件夹的文件
 
 
 def print_dec(command):
     def deco(func):
         def _deco():
             func()
-            print(command)
-            print()
-            print(" ".join(command))
+            print("命令列表:", command)
+            print("执行命令:", " ".join(command))
 
         return _deco
 
@@ -142,13 +147,11 @@ def pause():
     os.system("pause")
 
 
-
-
 @print_dec(command)  # 调试用
 def get_command():  # 切换下一个壁纸
     running_path()
     next(files)
-    mode('auto', 1280)
+    mode('auto', 3840)
     process('cudnn')
 
 
@@ -158,8 +161,13 @@ def apply_wallpaper():
     set_wallpaper()
     global command
     command = []
-    pause()
+    # pause()
 
+
+apply_wallpaper()
 while input() != 'q':
-    apply_wallpaper()
-
+    try:
+        apply_wallpaper()
+        print()
+    except StopIteration:
+        pause()
