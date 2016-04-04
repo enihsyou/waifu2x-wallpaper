@@ -4,6 +4,7 @@ import subprocess, time, ctypes, os, re
 
 # ARGUMENTS
 command = []
+revert = 0
 # path = r'D:\test'  # 文件所在的文件夹
 path = r'D:\Sean\我的图片\新建文件夹'  # 文件所在的文件夹
 tmp_path = r'D:\test\tmp'  # 文件所在的文件夹
@@ -87,11 +88,19 @@ def tta(y = 0):
 
 
 def file_names(path, tmp_path):
+    global out_img_path
     img_ext = ['.bmp', '.jpeg', '.jpg', '.png']
     current_files = set(os.listdir(path))
-
+    used = []
     # for item in current_files: # 迭代全部
     while current_files:  # 随机选择
+        if revert:
+            global out_img_path
+            # used.append(used.pop(-2))
+            out_img_path = used[-(revert + 1)]
+            yield
+            continue
+
         item = random.sample(current_files, 1)[0]
         print("切换模式:", "随机选择")
         print("工作文件夹:", path)
@@ -107,6 +116,7 @@ def file_names(path, tmp_path):
 
             input_files(path, in_name)  # 输入文件名
             output_files(tmp_path, out_name)  # 输出文件名
+            used.append(out_img_path)
             yield
 
 
@@ -151,7 +161,7 @@ def pause():
 def get_command():  # 切换下一个壁纸
     running_path()
     next(files)
-    mode('auto', 3840)
+    mode('auto', 1280)
     process('cudnn')
 
 
@@ -165,8 +175,20 @@ def apply_wallpaper():
 
 
 apply_wallpaper()
-while input() != 'q':
+while True:
+    print("输入q退出 输入b返回上一张 其他任意键切换壁纸")
+    com = input()
+    if com == 'q':
+        break
+    if com == 'b':
+        revert += 1
+        next(files)
+        set_wallpaper()
+        print("切换回上一张:", out_img_path, '\n')
+        continue
+
     try:
+        revert = 0
         apply_wallpaper()
         print()
     except StopIteration:
