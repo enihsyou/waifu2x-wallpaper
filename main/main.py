@@ -3,12 +3,18 @@ import subprocess, time, ctypes, os, re
 
 # ARGUMENTS
 command = []
-# waifu2x-caffe所在位置
-running_path = r"D:\waifu2x-caffe\waifu2x-caffe-cui.exe"
-command.append(running_path)
-
+path = r'D:\test'  # 文件所在的文件夹
+tmp_path = r'D:\test\tmp'  # 文件所在的文件夹
+out_img_path = ''  # 输出的文件夹 初始化
+if not os.path.exists(tmp_path):
+    os.mkdir(tmp_path)
 
 # Functions
+def running_path():
+    running = r"D:\waifu2x-caffe\waifu2x-caffe-cui.exe"
+    command.append(running)
+
+
 def input_files(folder, image):
     re.sub(folder, r'[A-Z]\:(.*)[^\\]', r'\:\\\\')
     image_path = '\"' + os.path.join(folder, image) + '\"'
@@ -18,6 +24,9 @@ def input_files(folder, image):
 def output_files(folder, image):
     out_path = '\"' + os.path.join(folder, image) + '\"'
     command.append("-o " + out_path)
+    global out_img_path
+    out_img_path = os.path.join(folder, image)
+    print(out_img_path)
 
 
 def mode(mode, weight = None, height = None, scale = 2.0, noise = 1):
@@ -73,16 +82,13 @@ def tta(y = 0):
         command.append("-t 1")
 
 
-path = r'D:\test'
-
-out_path = ''
-
-
-def file_names(path):
+def file_names(path,tmp_path):
     img_ext = ['.bmp', '.jpeg', '.jpg', '.png']
     os.chdir(path)
-    files = os.listdir(path)
-    for item in files:
+    current_files = os.listdir(path)
+
+    for item in current_files:
+
         if os.path.splitext(item)[-1] in img_ext:  # TODO: 这里有一个临时文件需要排除的需求
             img_name = os.path.basename(item)
             in_name = img_name
@@ -91,38 +97,72 @@ def file_names(path):
                 out_name = prefix.group() + os.path.splitext(item)[1]
             else:
                 out_name = os.path.splitext(item)[0] + 'tmp' + os.path.splitext(item)[1]
-            input_files(path, in_name)
-            output_files(path, out_name)
-            global out_path
-            out_path = os.path.join(path, out_name)
+
+            input_files(path, in_name)  # 输入文件名
+            output_files(tmp_path, out_name)  # 输出文件名
+            print(command[-1])
             yield
 
 
-next(file_names(path))
-mode('auto', 3840)
-process('cudnn')
+files = file_names(path,tmp_path)  # 迭代器 当前文件夹的文件
 
-# 所要执行的命令
-print(command)
-command = " ".join(command)
-# command = r"{} -i {} -o {} -m {} -s {} -w 3840 -p cudnn".format(
-#     running_path, image_path, out_path, mode, scale_ratio)
-print(command)
-print(out_path)
+
+def print_dec(command):
+    def deco(func):
+        def _deco():
+            func()
+            print(command)
+            print()
+            print(" ".join(command))
+
+        return _deco
+
+    return deco
+
+
 # 执行命令
-command_return = subprocess.Popen(command,
-                                  shell = True, stdout = subprocess.PIPE).stdout.read()
-# 获取命令显示的文字
-re_value = command_return.decode('shift-jis')
+def run_command():
+    command_return = subprocess.Popen(" ".join(command),
+                                      shell = True, stdout = subprocess.PIPE).stdout.read()
+    # 获取命令显示的文字
+    re_value = command_return.decode('shift-jis')
+    print(re_value)
+    return re_value
 
-print(re_value)
 
-# Set Windows desktop wallpaper
-SPI_SETDESKWALLPAPER = 20
-SPIF_UPDATEINIFILE = 0
-SystemParametersInfo = ctypes.windll.user32.SystemParametersInfoW
-SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, out_path, SPIF_UPDATEINIFILE)
+def set_wallpaper():
+    """Set Windows desktop wallpaper"""
 
-# Pause or Hold 1s
-# time.sleep(1)
-os.system("pause")
+    ctypes.windll.user32.SystemParametersInfoW(20, 0, out_img_path, 0)
+
+
+def pause():
+    # Pause or Hold 1s
+    time.sleep(3)
+    # os.system("pause")
+
+
+# while input() != 'q':
+#     next(file_names(path))
+
+@print_dec(command)  # 调试用
+def get_command():  # 切换下一个壁纸
+    running_path()
+    next(files)
+    mode('auto', 1280)
+    process('cudnn')
+
+
+def apply_wallpaper():
+    get_command()
+    run_command()
+    set_wallpaper()
+    global command
+    command = []
+    pause()
+
+
+apply_wallpaper()
+apply_wallpaper()
+apply_wallpaper()
+apply_wallpaper()
