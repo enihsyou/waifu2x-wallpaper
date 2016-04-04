@@ -4,6 +4,7 @@ import subprocess, time, ctypes, os, re
 
 # ARGUMENTS
 command = []
+used = []
 revert = 0
 # path = r'D:\test'  # 文件所在的文件夹
 path = r'D:\Sean\我的图片\新建文件夹'  # 文件所在的文件夹
@@ -91,15 +92,21 @@ def file_names(path, tmp_path):
     global out_img_path
     img_ext = ['.bmp', '.jpeg', '.jpg', '.png']
     current_files = set(os.listdir(path))
-    used = []
     # for item in current_files: # 迭代全部
     while current_files:  # 随机选择
         if revert:
             global out_img_path
             # used.append(used.pop(-2))
-            out_img_path = used[-(revert + 1)]
-            yield
-            continue
+            if revert < len(used):
+                out_img_path = used[-(revert + 1)]
+                print("切换回上一张:", out_img_path, '\n')
+                yield
+                continue
+            else:
+                print("已经是第一张了")
+                print("当前:", out_img_path, '\n')
+                yield
+                continue
 
         item = random.sample(current_files, 1)[0]
         print("切换模式:", "随机选择")
@@ -121,18 +128,6 @@ def file_names(path, tmp_path):
 
 
 files = file_names(path, tmp_path)  # 迭代器 当前文件夹的文件
-
-
-def print_dec(command):
-    def deco(func):
-        def _deco():
-            func()
-            print("命令列表:", command)
-            print("执行命令:", " ".join(command))
-
-        return _deco
-
-    return deco
 
 
 # 执行命令
@@ -157,18 +152,19 @@ def pause():
     os.system("pause")
 
 
-@print_dec(command)  # 调试用
 def get_command():  # 切换下一个壁纸
     running_path()
     next(files)
-    mode('auto', 1280)
+    mode('auto', 3840)
     process('cudnn')
+    print("命令列表:", command)
+    print("执行命令:", " ".join(command))
 
 
 def apply_wallpaper():
     get_command()
-    run_command()
-    set_wallpaper()
+    # run_command()
+    # set_wallpaper()
     global command
     command = []
     # pause()
@@ -176,7 +172,7 @@ def apply_wallpaper():
 
 apply_wallpaper()
 while True:
-    print("输入q退出 输入b返回上一张 其他任意键切换壁纸")
+    print("\n输入q退出 输入b返回上一张 输入l显示处理过的壁纸 其他任意键切换壁纸")
     com = input()
     if com == 'q':
         break
@@ -184,12 +180,18 @@ while True:
         revert += 1
         next(files)
         set_wallpaper()
-        print("切换回上一张:", out_img_path, '\n')
         continue
-
+    if com == 'l':
+        for item in used:
+            print(item)
+        continue
     try:
         revert = 0
         apply_wallpaper()
         print()
     except StopIteration:
         pause()
+
+# TODO: waifu2x的内存占用量问题
+# TODO: 尝试预渲染几张
+# BUG: print_dec(command)
