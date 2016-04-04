@@ -138,12 +138,11 @@ def set_wallpaper():
 
 def pause():
     # Pause or Hold 1s
-    time.sleep(3)
-    # os.system("pause")
+    # time.sleep(3)
+    os.system("pause")
 
 
-# while input() != 'q':
-#     next(file_names(path))
+
 
 @print_dec(command)  # 调试用
 def get_command():  # 切换下一个壁纸
@@ -161,8 +160,6 @@ def apply_wallpaper():
     command = []
     pause()
 
+while input() != 'q':
+    apply_wallpaper()
 
-apply_wallpaper()
-apply_wallpaper()
-apply_wallpaper()
-apply_wallpaper()
