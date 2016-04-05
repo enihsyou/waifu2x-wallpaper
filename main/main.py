@@ -1,11 +1,17 @@
 # -*- coding: UTF-8 -*-
 import random
-import subprocess, time, ctypes, os, re
+import subprocess
+import threading
+import time
+import ctypes
+import os
+import re
 
 # ARGUMENTS
 command = []
 used = []
 revert = 0
+TIME_INTERVAL = 3
 # path = r'D:\test'  # 文件所在的文件夹
 path = r'D:\Sean\我的图片\新建文件夹'  # 文件所在的文件夹
 tmp_path = r'D:\test\tmp'  # 文件所在的文件夹
@@ -108,18 +114,18 @@ def file_names(path, tmp_path):
                 yield
                 continue
 
-        item = random.sample(current_files, 1)[0]
+        random_item = random.sample(current_files, 1)[0]
         print("切换模式:", "随机选择")
         print("工作文件夹:", path)
         print("临时文件夹:", tmp_path)
-        if os.path.splitext(item)[-1] in img_ext:  # TODO: 这里有一个临时文件需要排除的需求
-            img_name = os.path.basename(item)
+        if os.path.splitext(random_item)[-1] in img_ext:  # TODO: 这里有一个临时文件需要排除的需求
+            img_name = os.path.basename(random_item)
             in_name = img_name
             prefix = re.match(r'\w+ \d+', img_name)
             if prefix:
-                out_name = prefix.group() + os.path.splitext(item)[1]
+                out_name = prefix.group() + os.path.splitext(random_item)[1]
             else:
-                out_name = os.path.splitext(item)[0] + 'tmp' + os.path.splitext(item)[1]
+                out_name = os.path.splitext(random_item)[0] + 'tmp' + os.path.splitext(random_item)[1]
 
             input_files(path, in_name)  # 输入文件名
             output_files(tmp_path, out_name)  # 输出文件名
@@ -148,8 +154,8 @@ def set_wallpaper():
 
 def pause():
     # Pause or Hold 1s
-    # time.sleep(3)
-    os.system("pause")
+    time.sleep(3)
+    # os.system("pause")
 
 
 def get_command():  # 切换下一个壁纸
@@ -161,37 +167,91 @@ def get_command():  # 切换下一个壁纸
     print("执行命令:", " ".join(command))
 
 
+class Time:
+    def __init__(self, func, interval):
+        self.func = func
+        self.interval = interval
+        self.thread = threading.Timer(self.interval, self.run)
+
+    def run(self):
+        self.func()
+        self.thread = threading.Timer(self.interval, self.run)
+        self.thread.start()
+
+    def start(self):
+        self.thread.start()
+
+    def cancel(self):
+        self.thread.cancel()
+
+    def pause(self):
+        self.thread = threading.Timer(self.interval, self.run)
+        self.thread.start()
+
+
 def apply_wallpaper():
+    print("时间:", time.ctime())
+    now_time = time.perf_counter()
+
     get_command()
-    # run_command()
-    # set_wallpaper()
+    run_command()
+    set_wallpaper()
     global command
     command = []
+
+    now_time -= time.perf_counter()
+    print("执行时间: ", -now_time)
+    print()
     # pause()
 
 
-apply_wallpaper()
-while True:
-    print("\n输入q退出 输入b返回上一张 输入l显示处理过的壁纸 其他任意键切换壁纸")
-    com = input()
-    if com == 'q':
-        break
-    if com == 'b':
-        revert += 1
-        next(files)
-        set_wallpaper()
-        continue
-    if com == 'l':
-        for item in used:
-            print(item)
-        continue
-    try:
-        revert = 0
-        apply_wallpaper()
-        print()
-    except StopIteration:
-        pause()
+def check_input(timer):
+    global revert
+    print("\n输入q退出 输入b返回上一张\n"
+          "输入l显示处理过的壁纸 输入a暂停 输入s继续\n")
+    while True:
+        # print("时间:", time.ctime())
+        com = input()
+        if com == 'q':
+            print("结束")
+            timer.cancel()
+            pause()
+            break
+        if com == 'b':
+            timer.cancel()
+            revert += 1
+            try:
+                next(files)
+            except StopIteration:
+                pause()
+            set_wallpaper()
+            timer.pause()
+            revert -= 0
+            continue
+        if com == 'l':
+            for item in used:
+                print(item)
+            continue
+        if com == 'a':
+            timer.cancel()
+        if com == 's':
+            timer.run()
 
-# TODO: waifu2x的内存占用量问题
+
+timer = Time(apply_wallpaper, 10)
+apply_wallpaper()
+timer.start()
+# thread1 = threading.Thread(target = timer.start(), name = "切换壁纸")
+thread2 = threading.Thread(target = check_input(timer), name = "输入检测")
+# threads = [thread1, thread2]
+# if __name__ == '__main__':
+#     # apply_wallpaper()
+#     for t in threads:
+#         t.setDaemon(True)
+#         t.start()
+#
+#     print("结束了")
+#     pause()
+
+
 # TODO: 尝试预渲染几张
-# BUG: print_dec(command)
