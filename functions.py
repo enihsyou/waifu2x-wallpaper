@@ -1,3 +1,4 @@
+import ctypes
 import os
 import random
 import re
@@ -169,21 +170,19 @@ class Command:
         elif self.aspect_ratio < 1:
             print("大概不适合桌面")
             next(self.get_next_file())
-        else:
-            # command_return = subprocess.Popen(" ".join(self.commands),
-            #                                   shell = True, stdout = subprocess.PIPE).stdout.read()
-            # 获取命令显示的文字
-            command_return = b'abc'
-            re_value = command_return.decode('shift-jis')
-            print(re_value)
+            self.run_command()
+
+        command_return = subprocess.Popen(" ".join(self.commands),
+                                          shell = True, stdout = subprocess.PIPE).stdout.read()
+        re_value = command_return.decode('shift-jis')
+        print(re_value)
             # return re_value
 
     def set_wallpaper(self):
         """Set Windows desktop wallpaper"""
         print("设置壁纸", self.tmp_img_path)
-
-
-        # ctypes.windll.user32.SystemParametersInfoW(20, 0, self.tmp_img_path, 0)
+        ctypes.windll.user32.SystemParametersInfoW(20, 0, self.tmp_img_path, 0)
+        print("时间:", time.ctime())
 
     def set_interval(self, interval):
         self.interval = interval
@@ -245,7 +244,6 @@ class Command:
                     yield
 
     def apply(self):
-        # print("时间:", time.ctime())
         self.now_time = time.perf_counter()
         if not self.same_file:
             self.run_command()
