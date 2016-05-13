@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 import ctypes
 import os
 import random
@@ -5,6 +6,8 @@ import re
 import subprocess
 import threading
 import time
+import webbrowser
+
 from PIL import Image
 
 
@@ -63,6 +66,10 @@ def check_input(timer, cls):  # TODO: 将check_input包装成类
         if com == 's':
             timer.cancel()
             timer.run()
+        if com == 'ww':
+            url = r"http://{}.com/post/show/{}"
+            file_name = cls.tmp_img_name
+            webbrowser.open(url.format(file_name[0], file_name[1]))
         if com == 'w':
             cls.show_image()
 
@@ -113,10 +120,10 @@ class Command:
         print("输出文件:", self.tmp_img_path)
 
     def modes(self, mode, width = None, height = None, scale = 2.0, noise = 1):
-        modes = {'auto': '-m auto_scale',
-                 'noise': '-m noise',
+        modes = {'auto'       : '-m auto_scale',
+                 'noise'      : '-m noise',
                  'noise_scale': '-m noise_scale',
-                 'scale': '-m scale'}
+                 'scale'      : '-m scale'}
         self.mode = mode
         self.commands.append(modes[mode])
         if scale != 2.0:
@@ -147,8 +154,8 @@ class Command:
         self.commands.append(styles[style])
 
     def process(self, pro):
-        processes = {'cpu': "-p cpu",
-                     'gpu': "-p gpu",
+        processes = {'cpu'  : "-p cpu",
+                     'gpu'  : "-p gpu",
                      'cudnn': "-p cudnn"}
         self.commands.append(processes[pro])
 
@@ -167,7 +174,7 @@ class Command:
     def run_command(self):
         if self.img_width >= self.width or self.img_height >= self.height:
             print("图片质量优秀")
-        elif self.aspect_ratio < 1:
+        elif self.aspect_ratio <= 1.33:
             print("大概不适合桌面")
             next(self.get_next_file())
             self.run_command()
@@ -176,7 +183,7 @@ class Command:
                                           shell = True, stdout = subprocess.PIPE).stdout.read()
         re_value = command_return.decode('shift-jis')
         print(re_value)
-            # return re_value
+        # return re_value
 
     def set_wallpaper(self):
         """Set Windows desktop wallpaper"""
@@ -199,7 +206,7 @@ class Command:
         if tmp_path:
             self.tmp_path = tmp_path
         img_ext = ['bmp', 'jpeg', 'jpg', 'png']
-        current_files = set(os.listdir(self.path))
+        current_files = os.listdir(self.path)
         # for item in current_files: # 迭代全部
         while current_files:  # 随机选择 TODO: 添加文件尺寸的检测
             if self.revert:
@@ -215,7 +222,7 @@ class Command:
                     print("当前:", self.tmp_img_path, '\n')
                     yield
                     continue
-            self.image_name = random_item = random.sample(current_files, 1)[0]  # konachan 217778 black.jpg
+            self.image_name = random_item = random.choice(current_files)  # konachan 217778 black.jpg
             if not os.path.isfile(os.path.join(self.path, random_item)): continue
             self.commands = []
             self.add_running_path()

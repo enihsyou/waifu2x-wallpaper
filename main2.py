@@ -4,7 +4,8 @@ from functions import *
 command = []
 used = []
 TIME_INTERVAL = 600
-path = r'D:\test'  # 文件所在的文件夹
+path = r'D:\Sean\我的图片\WallPaper\2k'  # 文件所在的文件夹
+# path = r'D:\test'  # 文件所在的文件夹
 tmp_path = r'D:\test\tmp'  # 文件所在的文件夹
 if not os.path.exists(tmp_path):
     os.mkdir(tmp_path)
