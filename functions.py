@@ -8,70 +8,64 @@ import threading
 import time
 import webbrowser
 
+import psutil
+
 from PIL import Image
 
 
 class Time:
-    def __init__(self, func, interval):
+    def __init__(self, func, interval = 600):
         self.func = func
         self.interval = interval
-        self.thread = threading.Timer(self.interval, self.run)
+        self.break_flag = False
+        self.stop_flag = False
+        self.show_time = False
+        self.t = 0
 
-    def run(self):
-        self.func()
-        self.thread = threading.Timer(self.interval, self.run)
-        self.thread.start()
+    def start_timer(self):
+        """每秒增加时间 遇到终止符返回"""
+        self.t += 1
+
+        if self.t >= self.interval and not(self.stop_flag or self.break_flag):
+            self.reset()
+            self.func()
+
+        if self.show_time:
+            self.show_time = False
+            print("剩余时间: {}s".format(self.interval - self.t))
+
+        threading.Timer(1, self.start_timer).start()
+
+    def show(self):
+        """显示剩余时间"""
+        self.show_time = True
+
+    def stop(self):
+        """终止时钟"""
+        self.break_flag = True
+        self.stop_flag = True
+        self.reset()
 
     def start(self):
-        self.thread.start()
+        self.break_flag = False
+        self.stop_flag = False
+        self.func()
 
-    def cancel(self):
-        self.thread.cancel()
+    def set_interval(self, new_interval):
+        """设置函数运行间隔"""
+        self.interval = new_interval
 
     def pause(self):
-        self.thread = threading.Timer(self.interval, self.run)
-        self.thread.start()
+        """暂停时钟"""
+        self.break_flag = True
 
+    def resume(self):
+        """恢复暂停了的时钟"""
+        self.break_flag = False
 
-def check_input(timer, cls):  # TODO: 将check_input包装成类
-    print("\n输入q退出 输入b返回上一张 输入w打开原图\n"
-          "输入l显示处理过的壁纸 输入a暂停 输入s继续\n")
-    while True:
-        # print("时间:", time.ctime())
-        com = input()
-        if com == 'q':
-            print("结束")
-            timer.cancel()
-            cls.pause()
-            break
-        if com == 'b':
-            timer.cancel()
-            cls.revert += 1
-            try:
-                next(cls.get_next_file())
-            except StopIteration:
-                cls.pause()
-            cls.set_wallpaper()
-            timer.pause()
-            cls.revert -= 1
-            continue
-        if com == 'l':
-            print("最新10张: ")
-            for index, item in enumerate(cls.used):
-                if index >= len(cls.used) - 10:
-                    print('No.' + str(index + 1), item)
-            continue
-        if com == 'a':
-            timer.cancel()
-        if com == 's':
-            timer.cancel()
-            timer.run()
-        if com == 'ww':
-            url = r"http://{}.com/post/show/{}"
-            file_name = cls.tmp_img_name
-            webbrowser.open(url.format(file_name[0], file_name[1]))
-        if com == 'w':
-            cls.show_image()
+    def reset(self):
+        """将时间重置"""
+        self.t = 0
 
 
 class Command:
@@ -87,7 +81,7 @@ class Command:
         self.used = []
         self.used_orig = {}
         self.same_file = False
-        self.interval = 2  # pause time in seconds
+        self.interval = 5  # pause time in seconds
         self.now_time = 0
         self.revert = 0
 
@@ -103,7 +97,7 @@ class Command:
 
     def add_running_path(self):
         running = r"D:\waifu2x-caffe\waifu2x-caffe-cui.exe"
-        print("waifu2x-caffe-cui.exe所在文件夹:", running)
+        # print("waifu2x-caffe-cui.exe所在文件夹:", running)
         self.commands.append(running)
 
     def add_input_file(self):
@@ -138,6 +132,8 @@ class Command:
         if height:
             self.height = height
             self.commands.append("-h " + str(height))
+        else:
+            self.height = self.width * 9 / 16
 
     def model(self, style):
         """
@@ -174,7 +170,7 @@ class Command:
     def run_command(self):
         if self.img_width >= self.width or self.img_height >= self.height:
             print("图片质量优秀")
-        elif self.aspect_ratio <= 1.33:
+        elif self.aspect_ratio <= 1.5:
             print("大概不适合桌面")
             next(self.get_next_file())
             self.run_command()
@@ -201,6 +197,7 @@ class Command:
         # os.system("pause")
 
     def get_next_file(self, path = r'', tmp_path = r''):
+        """获取下一个文件"""
         if path:
             self.path = path
         if tmp_path:
@@ -223,13 +220,14 @@ class Command:
                     yield
                     continue
             self.image_name = random_item = random.choice(current_files)  # konachan 217778 black.jpg
-            if not os.path.isfile(os.path.join(self.path, random_item)): continue
+            self.image_path = os.path.join(self.path, self.image_name)
+            if not os.path.isfile(self.image_path): continue
             self.commands = []
             self.add_running_path()
             self.modes(self.mode, self.width)
-            print("切换模式:", "随机选择")
-            print("工作文件夹:", self.path)
-            print("临时文件夹:", self.tmp_path)
+            # print("切换模式:", "随机选择")
+            # print("工作文件夹:", self.plath)
+            # print("临时文件夹:", self.tmp_path)
 
             image_name, ext = random_item.rsplit('.', 1)  # konachan 217778 black , jpg
             if ext in img_ext:
@@ -241,6 +239,9 @@ class Command:
 
                 self.add_input_file()
                 self.add_output_file()
+
+                self.get_image_attr(self.image_path)
+
                 if os.path.exists(self.tmp_img_path):
                     print('存在同名临时文件')
                     self.same_file = True
@@ -252,10 +253,22 @@ class Command:
 
     def apply(self):
         self.now_time = time.perf_counter()
-        if not self.same_file:
-            self.run_command()
-            self.set_wallpaper()
 
+        # 获取当前内存剩余量
+        mem_available = psutil.virtual_memory().available
+
+        if not self.same_file:
+            if mem_available < 1514237184:
+                mem_parsed = 0
+                for x in ['bytes', 'KB', 'MB', 'GB']:
+                    if mem_available < 1024.0:
+                        mem_parsed = "%3.3f%s" % (mem_available, x)
+                    mem_available /= 1024.0
+                print("内存不足, 只有", mem_parsed)
+            else:
+                self.show_image_attr()
+                # self.run_command()
+                # self.set_wallpaper()
         self.now_time -= time.perf_counter()
         print("执行时间: ", -self.now_time)
         print()
@@ -265,10 +278,64 @@ class Command:
         next(self.get_next_file())
         self.apply()
 
-    def get_image_attr(self, img):  # 获取当前图片的 长 宽 宽高比
+    def get_image_attr(self, img):
+        """获取当前图片的 长 宽 宽高比"""
         image = Image.open(img)
         self.img_width, self.img_height = image.size
-        self.aspect_ratio = self.width / self.height
+        self.aspect_ratio = self.img_width / self.img_height
 
-    def show_image(self):  # 打开当前壁纸的原始文件
+    def show_image_attr(self):
+        """显示当前图片的 长 宽 宽高比"""
+        # image = Image.open(self.tmp_img_path)
+        print("图片属性: {} x {} @ {:.2}".format(self.img_width, self.img_height, self.aspect_ratio))
+
+    def show_image(self):
+        """打开当前壁纸的原始文件"""
         os.startfile(self.used_orig[self.tmp_img_path])
+
+
+def check_input(timer, cls):
+    """timer = Time(paper.next, TIME_INTERVAL) cls = Command(path, tmp_path)"""
+    print("\n输入q退出 输入b返回上一张 输入w打开原图 ww打开来源\n"
+          "输入l显示处理过的壁纸 输入a暂停 输入s继续\n")
+    assert isinstance(timer, Time) and isinstance(cls, Command) == True
+
+    timer.start_timer()
+    while True:
+        # print("时间:", time.ctime())
+        com = input()
+        if com == 'q':  # 终止
+            print("结束")
+            timer.stop()
+            cls.pause()
+            break
+        if com == 'b':  # 返回上一张
+            timer.stop()
+            cls.revert += 1
+            try:
+                next(cls.get_next_file())
+            except StopIteration:
+                cls.pause()
+            cls.set_wallpaper()
+            timer.start_timer()
+            cls.revert -= 1
+            continue
+        if com == 'l':  # 列出列表
+            print("最新10张: ")
+            for index, item in enumerate(cls.used):
+                if index >= len(cls.used) - 10:
+                    print('No.' + str(index + 1), item)
+            continue
+        if com == 'a':  # 暂停
+            timer.pause()
+        if com == 's':  # 下一张
+            timer.stop()
+            timer.start()
+        if com == 'ww':  # 打开来源
+            url = r"http://{}.com/post/show/{}"
+            file_name = cls.tmp_img_name.split('.')[0].split()
+            webbrowser.open(url.format(file_name[0], file_name[1]))
+        if com == 'w':  # 显示原图
+            cls.show_image()
+        if com == 't':  # 显示剩余时间
+            timer.show()
