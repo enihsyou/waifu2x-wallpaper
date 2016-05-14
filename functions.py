@@ -9,7 +9,6 @@ import time
 import webbrowser
 
 import psutil
-
 from PIL import Image
 
 
@@ -267,8 +266,8 @@ class Command:
                 print("内存不足, 只有", mem_parsed)
             else:
                 self.show_image_attr()
-                # self.run_command()
-                # self.set_wallpaper()
+                self.run_command()
+                self.set_wallpaper()
         self.now_time -= time.perf_counter()
         print("执行时间: ", -self.now_time)
         print()
