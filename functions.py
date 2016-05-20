@@ -275,7 +275,11 @@ class Command:
 
     def next(self):
         next(self.get_next_file())
-        self.apply()
+        self.show_image()
+        if input() in ' \r\t\n':
+            self.apply()
+        else:
+            self.next()
 
     def get_image_attr(self, img):
         """获取当前图片的 长 宽 宽高比"""
