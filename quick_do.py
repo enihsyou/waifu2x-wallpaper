@@ -26,25 +26,25 @@ for file in os.listdir(os.getcwd()):
         command.append("-o \"%s\"" % os.path.join('D:\\', 'temp', file))
         command.append("-p %s" % 'cudnn')
         if ratio <= 1:
-            if not (width < 1440 or height < 2560): continue
-            p_height = 1440 / ratio  # 按宽度等比缩放之后 对应的高度
-            p_width = 2560 * ratio  # 按高度等比缩放之后 对应的宽度
-            if min(p_width, p_height / 16 * 9) == p_width:
-                command.append("-w %d" % 1440)
-            else:
-                command.append("-h %d" % 2560)
+            if width < 1440 or height < 2560:
+                p_height = 1440 / ratio  # 按宽度等比缩放之后 对应的高度
+                p_width = 2560 * ratio  # 按高度等比缩放之后 对应的宽度
+                if min(p_width, p_height / 16 * 9) == p_width:
+                    command.append("-w %d" % 1440)
+                else:
+                    command.append("-h %d" % 2560)
         else:
-            if not (width < 2160 or height < 2840): continue
-            p_height = 2160 / ratio  # 按宽度等比缩放之后 对应的高度
-            p_width = 3840 * ratio  # 按高度等比缩放之后 对应的宽度
-            if min(p_width, p_height / 16 * 9) == p_width:
-                command.append("-h %d" % 2160)
-            else:
-                command.append("-w %d" % 3840)
-
+            if width < 2160 or height < 2840:
+                p_height = 2160 / ratio  # 按宽度等比缩放之后 对应的高度
+                p_width = 3840 * ratio  # 按高度等比缩放之后 对应的宽度
+                if min(p_width, p_height / 16 * 9) == p_width:
+                    command.append("-h %d" % 2160)
+                else:
+                    command.append("-w %d" % 3840)
+        
         if len(command) > 4:
             command = " ".join(command)
-            print(command)
+            print(command[-1])
             command_return = subprocess.Popen(command,
                                               shell=True, stdout=subprocess.PIPE).stdout.read()
             print(command_return.decode('shift-jis'))
