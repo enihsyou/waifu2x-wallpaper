@@ -131,8 +131,8 @@ class Command:
         if height:
             self.height = height
             self.commands.append("-h " + str(height))
-        else:
-            self.height = self.width * 9 / 16
+            # else:
+            #     self.height = self.width * 9 / 16
 
     def model(self, style):
         """
@@ -285,7 +285,7 @@ class Command:
         """获取当前图片的 长 宽 宽高比"""
         image = Image.open(img)
         self.img_width, self.img_height = image.size
-        self.aspect_ratio = self.img_width / self.img_height
+        self.aspect_ratio = self.img_width / self.img_height * 1.0
 
     def show_image_attr(self):
         """显示当前图片的 长 宽 宽高比"""
@@ -335,9 +335,16 @@ def check_input(timer, cls):
             timer.stop()
             timer.start()
         if com == 'ww':  # 打开来源
-            url = r"http://{}.com/post/show/{}"
+            url = r"http://{}/post/show/{}"
             file_name = cls.tmp_img_name.split('.')[0].split()
-            webbrowser.open(url.format(file_name[0], file_name[1]))
+            if file_name[0] == 'konachan':
+                file_name_domain = 'konachan.com'
+            elif file_name[0] == 'yande':
+                file_name_domain = 'yande.re'
+            else:
+                print("不好打开")
+                continue
+            webbrowser.open(url.format(file_name_domain, file_name[1]))
         if com == 'w':  # 显示原图
             cls.show_image()
         if com == 't':  # 显示剩余时间
