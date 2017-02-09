@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 """
-快速处理一个文件夹，按照2560*1440和3840*2160处理，保证最小边长满足要求。
+快速处理一个文件夹，按照1440*2560和3840*2160 (w*h)处理，保证最小边长满足要求。
 """
 import os
 import subprocess
@@ -11,9 +11,13 @@ from PIL import Image
 running = r"D:\waifu2x-caffe\waifu2x-caffe-cui.exe"
 for file in os.listdir(os.getcwd()):
     file_path = os.path.join(os.getcwd(), file)
-    if not os.path.isfile(file_path): continue
-    if os.path.splitext(file)[-1] not in ['.bmp', '.jpeg', '.jpg', '.png']: continue
+    if not os.path.isfile(file_path):
+        continue
+    if os.path.splitext(file)[-1] not in ['.bmp', '.jpeg', '.jpg', '.png']:
+        continue
+
     command = [running]
+
     try:
         os.mkdir(os.path.join('D:\\', 'temp'))
     except FileExistsError:
@@ -21,32 +25,32 @@ for file in os.listdir(os.getcwd()):
     with Image.open(file) as image:  # type: Image.Image
         width, height = image.size
         ratio = width / height
-        print(width, height, ratio, file)
+        print("当前处理: ({}, {}) 比例: {:.4f} {}".format(width, height, ratio, file))
         command.append("-i \"%s\"" % file_path)
         command.append("-o \"%s\"" % os.path.join('D:\\', 'temp', file))
         command.append("-p %s" % 'cudnn')
-        if ratio <= 1:
+        if ratio <= 5 / 4:  # 是否是纵向
             if width < 1440 or height < 2560:
-                p_height = 1440 / ratio  # 按宽度等比缩放之后 对应的高度
-                p_width = 2560 * ratio  # 按高度等比缩放之后 对应的宽度
-                if min(p_width, p_height / 16 * 9) == p_width:
+                t_ratio = 1440 / width  # 横向长度比例
+
+                if height * t_ratio >= 2560:
                     command.append("-w %d" % 1440)
                 else:
                     command.append("-h %d" % 2560)
         else:
-            if width < 2160 or height < 2840:
-                p_height = 2160 / ratio  # 按宽度等比缩放之后 对应的高度
-                p_width = 3840 * ratio  # 按高度等比缩放之后 对应的宽度
-                if min(p_width, p_height / 16 * 9) == p_width:
-                    command.append("-h %d" % 2160)
-                else:
+            if width < 3840 or height < 2160:
+                t_ratio = 3840 / width  # 横向长度比例
+
+                if height * t_ratio >= 2160:
                     command.append("-w %d" % 3840)
-        
+                else:
+                    command.append("-h %d" % 2160)
+
         if len(command) > 4:
             command = " ".join(command)
-            print(command[-1])
             command_return = subprocess.Popen(command,
                                               shell=True, stdout=subprocess.PIPE).stdout.read()
             print(command_return.decode('shift-jis'))
         else:
             copyfile(file, os.path.join('D:\\', 'temp', file))
+            print("跳过\n")
