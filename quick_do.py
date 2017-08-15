@@ -8,71 +8,72 @@ from shutil import copyfile
 
 from PIL import Image
 
-running = r"D:\waifu2x-caffe\waifu2x-caffe-cui.exe"
-# 创建目标文件夹
-output_folder = os.path.join('D:\\', 'temp')
-try:
-    os.mkdir(output_folder)
-    print("目标文件夹: {} 已创建".format(output_folder))
-except FileExistsError:
-    print("目标文件夹: {} 已存在".format(output_folder))
+caffe_location = r'"D:\Program Files (x86)\waifu2x-caffe\waifu2x-caffe-cui.exe"'
 
-# 处理数量计数器
-no = 0
+
+class NoMoreWordException(Exception):
+    pass
+
 
 for file in os.listdir(os.getcwd()):
-    file_path = os.path.join(os.getcwd(), file)  # 来源文件路径
+    file_path = os.path.join(os.getcwd(), file)
     if not os.path.isfile(file_path):
         continue
     if os.path.splitext(file)[-1] not in ('.jpg', '.png', '.bmp', '.jpeg'):
         continue
 
-    command = [running]
-    no += 1
+    command = [caffe_location]
 
+    try:
+        os.mkdir(os.path.join('D:\\', 'temp'))
+    except FileExistsError:
+        pass
     with Image.open(file) as image:  # type: Image.Image
         width, height = image.size
-
-    if height and width:
         ratio = width / height
-    else:
-        print("#{:d}: 图片维度信息错误\n\t文件名: {}".format(no, file))
-        continue
+        try:
+            if ratio <= 5 / 4:  # 是纵向
+                if width < 1440 or height < 2560:
+                    t_ratio = 1440 / width  # 横向长度比例
 
-    magnitude = 1
-    command.append("-i \"%s\"" % file_path)
-    command.append("-o \"%s\"" % os.path.join('D:\\', 'temp', file))
-    command.append("-p %s" % 'cudnn')
-    if ratio <= 5 / 4:  # 是否是纵向
-        if width < 1440 or height < 2560:
-            t_ratio = 1440 / width  # 横向长度比例
-
-            if height * t_ratio >= 2560:
-                command.append("-w %d" % 1440)
-                magnitude = t_ratio
+                    if height * t_ratio >= 2560:
+                        new_width, new_height = 1440, int(height * t_ratio)
+                        command.append("-w %d" % 1440)
+                    else:
+                        new_width, new_height = int(2560 / height * width), 2560
+                        command.append("-h %d" % 2560)
+                else:
+                    raise NoMoreWordException
             else:
-                command.append("-h %d" % 2560)
-                magnitude = 2560 / height
-    else:
-        if width < 3840 or height < 2160:
-            t_ratio = 3840 / width  # 横向长度比例
+                if width < 3840 or height < 2160:
+                    t_ratio = 3840 / width  # 横向缩放到3840 所需的比例
 
-            if height * t_ratio >= 2160:
-                command.append("-w %d" % 3840)
-                magnitude = t_ratio
-            else:
-                command.append("-h %d" % 2160)
-                magnitude = 2160 / height
+                    if height * t_ratio >= 2160:
+                        new_width, new_height = 3840, int(height * t_ratio)
+                        command.append("-w %d" % 3840)
+                    else:
+                        new_width, new_height = int(2160 / height * width), 2160
+                        command.append("-h %d" % 2160)
+                else:
+                    raise NoMoreWordException
+        except NoMoreWordException:
+            print("当前处理: {}\n 大小: ({}, {}) 跳过".format(
+                file, width, height))
+            copyfile(file, os.path.join('D:\\', 'temp', file))
+            continue
+        else:
+            command.append("-i \"%s\"" % file_path)
+            command.append("-o \"%s\"" % os.path.join('D:\\', 'temp', file))
+            command.append("-p %s" % 'cudnn')
+            print("当前处理: {}\n原大小: ({}, {}) 比例: {:.4f} 新大小: ({}, {})".format(
+                file, width, height, ratio, new_width, new_height))
 
-    if len(command) > 4:
-        print("#{:d}: 原始分辨率: ({:d}, {:d}) 比例: {:.4f} 放大率: {:.4f}\n\t文件名: {}".format(
-            no, width, height, ratio, magnitude, file))
-        command = " ".join(command)
-        command_return = subprocess.Popen(command,
-                                          shell=True, stdout=subprocess.PIPE).stdout.read()
-        print("\t{}".format(command_return.decode('shift-jis')))
-    else:
-        print("#{:d}: 原始分辨率: ({:d}, {:d}) 比例: {:.4f}\n\t文件名: {}".format(
-            no, width, height, ratio, file))
-        copyfile(file, os.path.join('D:\\', 'temp', file))
-        print("\t无需处理，跳过")
+            command.append("-m auto_scale")
+            command.append("-t 1")
+            command.append("-c 240")
+            command.append(r'--model_dir "D:\Program Files (x86)\waifu2x-caffe\models\upconv_7_anime_style_art_rgb"')
+            command_return = subprocess.Popen(" ".join(command),
+                                              shell=True, stdout=subprocess.PIPE).stdout.read()
+            print(command_return.decode('shift-jis'))
+
+input("{:-^80}".format("FINISHED"))
