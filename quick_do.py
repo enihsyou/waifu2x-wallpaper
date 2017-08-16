@@ -8,7 +8,10 @@ from shutil import copyfile
 
 from PIL import Image
 
-caffe_location = r'"D:\Program Files (x86)\waifu2x-caffe\waifu2x-caffe-cui.exe"'
+caffe_base = 'D:\\Program Files (x86)\\waifu2x-caffe\\'
+caffe_exe = r'waifu2x-caffe-cui.exe'
+caffe_location = os.path.join(caffe_base, caffe_exe)
+temp_folder_path = os.path.join('D:\\', 'temp')
 
 
 class NoMoreWordException(Exception):
@@ -16,21 +19,28 @@ class NoMoreWordException(Exception):
 
 
 for file in os.listdir(os.getcwd()):
-    file_path = os.path.join(os.getcwd(), file)
-    if not os.path.isfile(file_path):
+    original_path = os.path.join(os.getcwd(), file)  # 来源图片绝对路径
+    destination_path = os.path.join('D:\\', 'temp', file)  # 目标图片绝对路径
+    # 如果这路径指向的根本就不是图片文件，跳过不处理
+    if not os.path.isfile(original_path):
         continue
+    # 如果这路径指向的不是列表中允许的图片格式，跳过不处理
     if os.path.splitext(file)[-1] not in ('.jpg', '.png', '.bmp', '.jpeg'):
         continue
-
+    # 如果这路径指向的文件已存在，跳过不处理
+    if os.path.exists(destination_path):
+        continue
+    if not os.path.exists(temp_folder_path):
+        try:  # 防止中途文件夹被删除
+            os.mkdir(temp_folder_path)
+        except FileExistsError or NotImplementedError:
+            pass
     command = [caffe_location]
 
-    try:
-        os.mkdir(os.path.join('D:\\', 'temp'))
-    except FileExistsError:
-        pass
     with Image.open(file) as image:  # type: Image.Image
         width, height = image.size
         ratio = width / height
+
         try:
             if ratio <= 5 / 4:  # 是纵向
                 if width < 1440 or height < 2560:
@@ -59,11 +69,11 @@ for file in os.listdir(os.getcwd()):
         except NoMoreWordException:
             print("当前处理: {}\n 大小: ({}, {}) 跳过".format(
                 file, width, height))
-            copyfile(file, os.path.join('D:\\', 'temp', file))
+            copyfile(file, destination_path)
             continue
         else:
-            command.append("-i \"%s\"" % file_path)
-            command.append("-o \"%s\"" % os.path.join('D:\\', 'temp', file))
+            command.append("-i \"%s\"" % original_path)
+            command.append("-o \"%s\"" % destination_path)
             command.append("-p %s" % 'cudnn')
             print("当前处理: {}\n原大小: ({}, {}) 比例: {:.4f} 新大小: ({}, {})".format(
                 file, width, height, ratio, new_width, new_height))
@@ -71,7 +81,7 @@ for file in os.listdir(os.getcwd()):
             command.append("-m auto_scale")
             command.append("-t 1")
             command.append("-c 240")
-            command.append(r'--model_dir "D:\Program Files (x86)\waifu2x-caffe\models\upconv_7_anime_style_art_rgb"')
+            command.append('--model_dir "%s"' % os.path.join(caffe_base, "models\\upconv_7_anime_style_art_rgb"))
             command_return = subprocess.Popen(" ".join(command),
                                               shell=True, stdout=subprocess.PIPE).stdout.read()
             print(command_return.decode('shift-jis'))
